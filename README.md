@@ -4,6 +4,8 @@ A barebones PyxelEdit exporter.
 
 ## Usage
 
+Meant to be run from the command line.
+
     -i The name of the .pyxel file you wish to export.
     -o The directory you want to dump all the composited tile images.
 
