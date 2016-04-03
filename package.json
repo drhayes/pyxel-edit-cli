@@ -1,11 +1,12 @@
 {
   "name": "pyxel-edit-cli",
-  "version": "0.3.106",
+  "version": "0.3.106b",
   "description": "A barebones PyxelEdit exporter.",
   "main": "src/index.js",
   "scripts": {
     "test": "node src/index.js -i testFiles/player.pyxel -o testFiles/out"
   },
+  "bin": "src/index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/drhayes/pyxel-edit-cli.git"
