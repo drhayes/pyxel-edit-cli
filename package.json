@@ -1,6 +1,6 @@
 {
   "name": "pyxel-edit-cli",
-  "version": "0.3.106c",
+  "version": "0.3.106d",
   "description": "A barebones PyxelEdit exporter.",
   "main": "src/index.js",
   "scripts": {

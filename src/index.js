@@ -50,6 +50,9 @@ const outputTiles = new Map();
 
 Promise.all(layerKeys.map(layerKey => {
   const layer = docData.canvas.layers[layerKey];
+  if (layer.hidden) {
+    return;
+  }
   return Promise.all(Object.keys(layer.tileRefs).map(tileRefKey => {
     const tileRef = layer.tileRefs[tileRefKey];
     let outputTile = outputTiles.get(tileRefKey);
