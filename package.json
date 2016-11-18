@@ -4,7 +4,7 @@
   "description": "A barebones PyxelEdit exporter.",
   "main": "src/index.js",
   "scripts": {
-    "test": "node src/index.js -i testFiles/stoneTiles.pyxel -o testFiles/out"
+    "test": "node src/index.js -i testFiles/stoneTiles.pyxel -o testFiles/out -l"
   },
   "bin": "src/index.js",
   "repository": {
@@ -24,7 +24,7 @@
   "dependencies": {
     "adm-zip": "0.4.7",
     "bluebird": "3.4.6",
-    "jimp": "0.2.21",
+    "jimp": "0.2.27",
     "yargs": "4.3.2"
   },
   "engines": {

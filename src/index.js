@@ -8,13 +8,17 @@ const argv = require('yargs')
   .alias('outputDirectory', 'o')
   .alias('smushLayers', 's')
   .alias('stitchTiles', 'l')
+  .alias('stitchWidth', 'w')
+  .default('stitchWidth', 10)
   .boolean('smushLayers')
   .boolean('stitchTiles')
   .describe('inputFile', 'The .pyxel file you wish to export.')
   .describe('outputDirectory', 'The directory where I put the exported tiles.')
   .describe('smushLayers', 'Smush all the layers and export the result.')
+  .describe('stitchWidth', 'How wide the final stitched sheet is.')
   .example('$0 -i stoneTiles.pyxel -o assets/build', 'export all the tiles in stoneTiles.pyxel to assets/build')
   .example('$0 -i player.pyxel -o assets/build -s', 'export all the tiles in player.pyxel after first smushing the layers together')
+  .example('$0 -i stoneTiles.pyxel -o assets/build -l -w 10', 'export one sheet of tiles with the given width')
   .argv;
 
 const path = require('path');
@@ -51,7 +55,7 @@ function getImage(name) {
     })
 }
 
-function generateOutfilename(index) {
+function generateOutfilename(index = '') {
   return path.join(argv.outputDirectory, `${path.basename(argv.inputFile, '.pyxel')}${index}.png`);
 }
 
@@ -95,11 +99,47 @@ function smushLayers() {
     });
 }
 
-function exportTheTiles() {
-  // Easy peasey. Write out all the tile files in a format matching the inputFile tilename.
+function getAllTheTilenames() {
   return Promise.resolve(new Array(docData.tileset.numTiles))
     // Generate the filenames in the input file.
     .map((_, i) => `tile${i}.png`)
+}
+
+function stitchTiles() {
+  const { tileWidth, tileHeight, numTiles } = docData.tileset;
+  const width = argv.stitchWidth * tileWidth;
+  const height = Math.ceil(numTiles / argv.stitchWidth) * tileHeight;
+
+  return new Promise((resolve, reject) => {
+    const image = new Jimp(width, height, (err, image) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(image);
+      }
+    });
+  })
+    .then(image => {
+      return getAllTheTilenames()
+        .map(getImage)
+        .map((tileImage, i) => {
+          const x = i % argv.stitchWidth;
+          const y = Math.floor(i / argv.stitchWidth);
+          const tileX = x * tileWidth;
+          const tileY = y * tileHeight;
+          return image.blit(tileImage, tileX, tileY);
+        })
+        .then(() => image)
+    })
+    .then(image => image.write(generateOutfilename()))
+    .catch(e => {
+      console.error(e);
+    })
+}
+
+function exportTheTiles() {
+  // Easy peasey. Write out all the tile files in a format matching the inputFile tilename.
+  return getAllTheTilenames()
     .map(filename => inputFile.getEntry(filename))
     .map((zipEntry, i) => fs.writeFileAsync(generateOutfilename(i), zipEntry.getData()))
     .catch(e => {
@@ -109,6 +149,8 @@ function exportTheTiles() {
 
 if (argv.smushLayers) {
   smushLayers();
+} if (argv.stitchTiles) {
+  stitchTiles();
 } else {
   exportTheTiles();
 }
