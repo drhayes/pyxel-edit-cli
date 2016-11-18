@@ -4,7 +4,7 @@
   "description": "A barebones PyxelEdit exporter.",
   "main": "src/index.js",
   "scripts": {
-    "test": "node src/index.js -i testFiles/player.pyxel -o testFiles/out"
+    "test": "node src/index.js -i testFiles/stoneTiles.pyxel -o testFiles/out"
   },
   "bin": "src/index.js",
   "repository": {
@@ -23,6 +23,7 @@
   "homepage": "https://github.com/drhayes/pyxel-edit-cli#readme",
   "dependencies": {
     "adm-zip": "0.4.7",
+    "bluebird": "3.4.6",
     "jimp": "0.2.21",
     "yargs": "4.3.2"
   },

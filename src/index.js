@@ -3,17 +3,25 @@
 
 const argv = require('yargs')
   .usage('Usage: $0 -i [file] -o [dir]')
-  .demand(['i', 'o'])
-  .alias('i', 'inputFile')
-  .alias('o', 'outputDirectory')
-  .describe('i', 'The .pyxel file you wish to export.')
-  .describe('o', 'The directory where I put the exported tiles.')
-  .example('$0 -i player.pyxel -o assets/build', 'export all the tiles in player.pyxel to assets/build')
+  .demand(['inputFile', 'outputDirectory'])
+  .alias('inputFile', 'i')
+  .alias('outputDirectory', 'o')
+  .alias('smushLayers', 's')
+  .alias('stitchTiles', 'l')
+  .boolean('smushLayers')
+  .boolean('stitchTiles')
+  .describe('inputFile', 'The .pyxel file you wish to export.')
+  .describe('outputDirectory', 'The directory where I put the exported tiles.')
+  .describe('smushLayers', 'Smush all the layers and export the result.')
+  .example('$0 -i stoneTiles.pyxel -o assets/build', 'export all the tiles in stoneTiles.pyxel to assets/build')
+  .example('$0 -i player.pyxel -o assets/build -s', 'export all the tiles in player.pyxel after first smushing the layers together')
   .argv;
 
 const path = require('path');
 const AdmZip = require('adm-zip');
 const Jimp = require('jimp');
+const Promise = require('bluebird');
+var fs = Promise.promisifyAll(require('fs'));
 
 const inputFile = new AdmZip(argv.inputFile);
 const entries = inputFile.getEntries();
@@ -24,55 +32,83 @@ if (!docDataFile) {
   throw Error(`Missing docData.json in ${argv.inputFile}`);
 }
 const docData = JSON.parse(inputFile.readFile(docDataFile).toString());
-const layerKeys = Object.keys(docData.canvas.layers).reverse();
 
 // Cache the decoding of files for quicker access later.
 const imageHash = new Map();
 function getImage(name) {
   if (imageHash.has(name)) {
-    console.log('hit');
     return Promise.resolve(imageHash.get(name));
   }
   const entry = inputFile.getEntry(name);
   const buffer = inputFile.readFile(entry);
   return Jimp.read(buffer)
-  .then(image => {
-    imageHash.set(name, image);
-    return image;
-  })
-  .catch(e => {
-    console.error(e);
-  })
-}
-
-// All the tiles in this thing. Each is an array of an image that we'll squash later.
-const outputTiles = new Map();
-
-Promise.all(layerKeys.map(layerKey => {
-  const layer = docData.canvas.layers[layerKey];
-  if (layer.hidden) {
-    return;
-  }
-  return Promise.all(Object.keys(layer.tileRefs).map(tileRefKey => {
-    const tileRef = layer.tileRefs[tileRefKey];
-    let outputTile = outputTiles.get(tileRefKey);
-    if (!outputTile) {
-      outputTile = new Jimp(docData.tileset.tileWidth, docData.tileset.tileHeight);
-      outputTiles.set(tileRefKey, outputTile);
-    }
-    return getImage(`tile${tileRef.index}.png`)
-    .then(tile => {
-      outputTile.composite(tile, 0, 0);
+    .then(image => {
+      imageHash.set(name, image);
+      return image;
     })
     .catch(e => {
       console.error(e);
+    })
+}
+
+function generateOutfilename(index) {
+  return path.join(argv.outputDirectory, `${path.basename(argv.inputFile, '.pyxel')}${index}.png`);
+}
+
+function smushLayers() {
+  // All the tiles in this thing. Each is an array of an image that we'll squash later.
+  const outputTiles = new Map();
+  // Do in reverse order cuz we're applying composite, one on top of another.
+  const layerKeys = Object.keys(docData.canvas.layers).reverse();
+  return Promise.resolve(layerKeys)
+    .map(layerKey => docData.canvas.layers[layerKey])
+    .filter(layer => !layer.hidden)
+    .map(layer => {
+      return Promise.resolve(Object.keys(layer.tileRefs))
+        .map(tileRefKey => {
+          const tileRef = layer.tileRefs[tileRefKey];
+          let outputTile = outputTiles.get(tileRefKey);
+          if (!outputTile) {
+            // TODO: Support tileset fixedWidth === false
+            outputTile = new Jimp(docData.tileset.tileWidth, docData.tileset.tileHeight);
+            outputTiles.set(tileRefKey, outputTile);
+          }
+          return getImage(`tile${tileRef.index}.png`)
+            .then(tile => {
+              // TODO: Support layer alpha, blendmode
+              // TODO: Support tile rotation and flip
+              outputTile.composite(tile, 0, 0);
+            })
+            .catch(e => {
+              console.error(e);
+            });
+        })
+    })
+    .then(() => {
+      outputTiles.forEach((value, key) => {
+        value.write(generateOutfilename(key), function (error, img) {
+          if (error) {
+            throw error;
+          }
+        });
+      });
     });
-  }));
-}))
-.then(() => {
-  outputTiles.forEach((value, key) => {
-    const outPath = path.join(argv.outputDirectory, `${path.basename(argv.inputFile, '.pyxel')}${key}.png`);
-    value.write(outPath, function (error, img) {
+}
+
+function exportTheTiles() {
+  // Easy peasey. Write out all the tile files in a format matching the inputFile tilename.
+  return Promise.resolve(new Array(docData.tileset.numTiles))
+    // Generate the filenames in the input file.
+    .map((_, i) => `tile${i}.png`)
+    .map(filename => inputFile.getEntry(filename))
+    .map((zipEntry, i) => fs.writeFileAsync(generateOutfilename(i), zipEntry.getData()))
+    .catch(e => {
+      console.error(e);
     });
-  });
-});
+}
+
+if (argv.smushLayers) {
+  smushLayers();
+} else {
+  exportTheTiles();
+}
