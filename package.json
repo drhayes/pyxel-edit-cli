@@ -1,6 +1,6 @@
 {
   "name": "pyxel-edit-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A barebones PyxelEdit exporter.",
   "main": "src/index.js",
   "scripts": {
@@ -28,6 +28,6 @@
     "yargs": "4.3.2"
   },
   "engines": {
-    "node": "6.3.0"
+    "node": "~6.3.0"
   }
 }
