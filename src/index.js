@@ -108,8 +108,8 @@ function getAllTheTilenames() {
 
 function stitchTiles() {
   const { tileWidth, tileHeight, numTiles } = docData.tileset;
-  const width = argv.stitchWidth * tileWidth;
-  const height = Math.ceil(numTiles / argv.stitchWidth) * tileHeight;
+  const width = Math.min(argv.stitchWidth * tileWidth, numTiles * tileWidth);
+  const height = Math.round(numTiles / argv.stitchWidth) * tileHeight;
 
   return new Promise((resolve, reject) => {
     const image = new Jimp(width, height, (err, image) => {
