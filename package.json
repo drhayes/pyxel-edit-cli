@@ -1,10 +1,10 @@
 {
   "name": "pyxel-edit-cli",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A barebones PyxelEdit exporter.",
   "main": "src/index.js",
   "scripts": {
-    "test": "node src/index.js -i testFiles/stoneTiles.pyxel -o testFiles/out -l"
+    "test": "node src/index.js -l -i testFiles/faceTiles.pyxel -o testFiles/out"
   },
   "bin": "src/index.js",
   "repository": {
